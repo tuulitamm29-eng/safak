@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flower Guide</title>
+<style>
+  :root{--bg:#fbf8f3;--ink:#2a2622;--muted:#6f675e;--card:#fff;--line:#e8e1d6;--accent:#b5456b}
+  @media (prefers-color-scheme:dark){:root{--bg:#171513;--ink:#f0ebe3;--muted:#a69d91;--card:#221f1c;--line:#37322d;--accent:#e07a9d}}
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:32px 16px 16px;max-width:1100px;margin:0 auto}
+  h1{margin:0 0 4px;font-size:clamp(1.8rem,5vw,2.6rem);font-family:Georgia,serif}
+  header p{margin:0;color:var(--muted)}
+  .controls{max-width:1100px;margin:0 auto;padding:8px 16px;display:grid;gap:10px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  input[type=search],select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}
+  input[type=search]{flex:1;min-width:200px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer;font:inherit;font-size:.9rem}
+  .chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .banner{max-width:1100px;margin:8px auto 0;padding:0 16px;color:var(--muted);font-size:.95rem}
+  main{max-width:1100px;margin:0 auto;padding:12px 16px 40px;display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+  .card{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:12px;padding:14px 16px}
+  .card h2{margin:0;font-size:1.15rem}
+  .sci{font-style:italic;color:var(--muted);font-size:.9rem;margin-bottom:8px}
+  .card p{margin:6px 0}
+  .lbl{font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .badge{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:999px;margin:6px 6px 0 0;background:var(--line)}
+  .badge.here{background:var(--accent);color:#fff}
+  .badge.warn{background:#c0392b;color:#fff}
+  .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 0}
+  footer{max-width:1100px;margin:0 auto;padding:0 16px 40px;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>Flower Guide</h1>
+  <p>What flowers are, what they do, and which ones grow near you.</p>
+</header>
+
+<div class="controls">
+  <div class="row">
+    <input id="q" type="search" placeholder="Search by name, color or use (e.g. tea, red, perfume)">
+    <select id="country" aria-label="Your country"></select>
+  </div>
+  <div class="chips" id="chips"></div>
+</div>
+<div class="banner" id="banner"></div>
+<main id="list"></main>
+<footer>
+  This is a curated guide of about 50 well-known flowers, not every flower on Earth (there are roughly 300,000 flowering plant species). "Near me" shows flowers that grow wild or are commonly seen in the country you pick. Traditional uses are not medical advice. Never eat a wild plant unless an expert has identified it, and keep poisonous ones away from children and pets.
+</footer>
+
+<script>
+const COUNTRIES={EE:"Estonia",IT:"Italy",US:"United States",DE:"Germany",ES:"Spain",GB:"United Kingdom",JP:"Japan"};
+const TZ={"Europe/Tallinn":"EE","Europe/Rome":"IT","Europe/Berlin":"DE","Europe/Madrid":"ES","Europe/London":"GB","Asia/Tokyo":"JP"};
+// name, scientific name, color, what it is, what it does, tags, where {country: 'w' wild/native or 'g' commonly grown}
+const F=[
+["Cornflower","Centaurea cyanus","#3b5bdb","A bright blue meadow wildflower of the daisy family, once a common weed in grain fields. It is Estonia's national flower.","Feeds bees and butterflies, is used as an edible garnish and in dried teas, and is a symbol of Estonia.",["pollinator","tea","symbol"],{EE:"w",DE:"w",IT:"w",GB:"w",ES:"w",US:"g"}],
+["Red clover","Trifolium pratense","#d6336c","A pink-purple meadow flower in the pea family.","Fixes nitrogen in the soil, is a top bumblebee food plant, is grown as fodder and is brewed as herbal tea.",["pollinator","tea","food"],{EE:"w",DE:"w",IT:"w",GB:"w",ES:"w",US:"w"}],
+["Oxeye daisy","Leucanthemum vulgare","#f1c40f","A white-petalled, yellow-centred daisy of grassy places.","Provides nectar for insects, brightens meadows and has young leaves that are edible in small amounts.",["pollinator","ornamental"],{EE:"w",DE:"w",IT:"w",GB:"w",ES:"w",US:"w",JP:"w"}],
+["Lily of the valley","Convallaria majalis","#e8e8e8","A small woodland plant with arching stems of white, bell-shaped, very fragrant flowers.","Is used in perfumery and cut flowers, is a spring symbol, and is highly poisonous if eaten.",["scent","ornamental","poison"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"g",US:"g"}],
+["Wood anemone","Anemone nemorosa","#f5f5f5","A low white spring flower that carpets forest floors before the trees leaf out.","Marks the start of spring, feeds early insects and is an indicator of old, undisturbed woodland.",["pollinator","ornamental"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"w"}],
+["Liverleaf (hepatica)","Hepatica nobilis","#5c7cfa","A spring woodland flower in blue, violet or pink with three-lobed leaves.","Is among the first flowers of spring and was traditionally used in folk remedies for the liver.",["ornamental"],{EE:"w",DE:"w",IT:"w"}],
+["Marsh marigold","Caltha palustris","#fcc419","A glossy, buttercup-yellow flower of wet meadows and stream banks.","Gives early nectar to insects and brightens wetlands. It is toxic raw.",["pollinator","poison"],{EE:"w",DE:"w",GB:"w",IT:"w",US:"w"}],
+["Harebell","Campanula rotundifolia","#748ffc","A delicate, nodding, blue bell flower on thin stems.","Feeds bees and grows on dry grassland and dunes.",["pollinator","ornamental"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"w",US:"w"}],
+["Fireweed","Chamaenerion angustifolium","#e64980","A tall spike of magenta flowers that colonises burnt and cleared ground.","Is a major source of nectar and honey, and its young shoots and leaves are used as food and tea (ivan-chai).",["pollinator","tea","food"],{EE:"w",DE:"w",GB:"w",IT:"w",US:"w",JP:"w"}],
+["Dandelion","Taraxacum officinale","#fab005","A yellow weed whose flower turns into a ball of parachute seeds.","Is early food for pollinators, edible as salad greens and in wine, and was traditionally used as a diuretic tea.",["food","tea","pollinator"],{EE:"w",DE:"w",IT:"w",GB:"w",ES:"w",US:"w",JP:"w"}],
+["Cowslip","Primula veris","#ffd43b","A yellow, scented primrose of meadows, with drooping clusters of flowers.","Feeds early bees, is used for wine and tea, and was a traditional spring herb.",["tea","pollinator"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"w"}],
+["Heather","Calluna vulgaris","#be4bdb","A low shrub covered in tiny pink-purple flowers on bogs and moors.","Is a key honey plant, shelters ground-nesting birds and defines heathland habitats.",["pollinator","ornamental"],{EE:"w",DE:"w",GB:"w",ES:"w",IT:"w",US:"g"}],
+["European white water lily","Nymphaea alba","#f8f9fa","A floating aquatic plant with large white flowers on lakes and slow rivers.","Shades the water, gives shelter to fish and insects, and is a pond favourite worldwide.",["ornamental"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"w",US:"g"}],
+["Dog rose","Rosa canina","#f783ac","A wild climbing rose with pale pink, five-petalled flowers.","Produces rosehips, rich in vitamin C, used for syrup, jam and tea.",["food","tea","scent"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"w",US:"w"}],
+["Meadowsweet","Filipendula ulmaria","#f1e8c8","A frothy, creamy-white flower of damp meadows with an almond-like scent.","Flavours mead and drinks, attracts insects, and the salicylates it contains inspired the name aspirin.",["scent","tea","pollinator"],{EE:"w",DE:"w",GB:"w",US:"w"}],
+["Yarrow","Achillea millefolium","#ffe3e3","A flat-topped cluster of tiny white flowers with feathery leaves.","Was used traditionally to staunch wounds, feeds hoverflies and is a hardy garden plant.",["tea","pollinator"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"w",US:"w",JP:"w"}],
+["Chamomile","Matricaria chamomilla","#ffd8a8","A small daisy-like annual with a sweet, apple-like scent.","Is the world's best-known calming herbal tea.",["tea","scent"],{EE:"w",DE:"w",IT:"w",ES:"w",GB:"w",US:"w",JP:"g"}],
+["Lilac","Syringa vulgaris","#b197fc","A shrub with big clusters of fragrant purple or white flowers in late spring.","Is a classic garden and perfume plant and a symbol of spring in northern countries.",["scent","ornamental"],{EE:"g",DE:"g",GB:"g",IT:"g",ES:"g",US:"g",JP:"g"}],
+["Lady's slipper orchid","Cypripedium calceolus","#e0a526","A rare orchid with a large yellow, slipper-shaped lip, found in limy woodlands.","Is a protected conservation icon; pollinated by small bees that get trapped by its pouch.",["pollinator","ornamental"],{EE:"w",DE:"w",IT:"w",GB:"w"}],
+["Moth orchid","Phalaenopsis spp.","#f06595","A long-lasting orchid from tropical Asia, now the world's most popular houseplant orchid.","Is grown as a long-blooming indoor ornamental and a cut flower.",["ornamental"],{EE:"g",DE:"g",GB:"g",IT:"g",ES:"g",US:"g",JP:"g"}],
+["Rose","Rosa spp.","#e03131","The world's best-known garden flower, with thousands of cultivated varieties.","Is used in perfume (rose oil), food (petals, rosewater, hips) and as the classic symbol of love.",["scent","food","ornamental","symbol"],{EE:"g",DE:"g",GB:"g",IT:"g",ES:"g",US:"g",JP:"g"}],
+["Tulip","Tulipa spp.","#ff6b6b","A spring bulb flower in nearly every colour, from the mountains of Central Asia.","Is an icon of the Netherlands, a major cut flower, and its petals are edible in small amounts.",["ornamental","symbol"],{EE:"g",DE:"g",GB:"g",IT:"g",ES:"g",US:"g",JP:"g"}],
+["Sunflower","Helianthus annuus","#f59f00","A tall North American annual with a huge flower head that is really hundreds of tiny flowers.","Gives seeds and oil for food and feeds birds and bees.",["food","pollinator","ornamental"],{US:"w",EE:"g",DE:"g",GB:"g",IT:"g",ES:"g",JP:"g"}],
+["Lavender","Lavandula angustifolia","#9775fa","A silvery shrub with purple flower spikes from the Mediterranean.","Is used for essential oil, soap, cooking, sachets and sleep aids, and bees love it.",["scent","food","pollinator"],{ES:"w",IT:"w",DE:"g",GB:"g",US:"g",EE:"g",JP:"g"}],
+["Cherry blossom","Prunus serrulata and relatives","#fcc2d7","Spring-flowering cherry trees covered in pale pink blossom.","Mark the start of spring in Japan, where hanami picnics are held under the trees.",["ornamental","symbol"],{JP:"w",US:"g",DE:"g",GB:"g",IT:"g",ES:"g",EE:"g"}],
+["Sacred lotus","Nelumbo nucifera","#faa2c1","An aquatic plant with large pink or white flowers held above the water.","Has edible seeds and roots and is sacred in Buddhism and Hinduism, where it symbolises purity.",["food","symbol","ornamental"],{JP:"g",US:"g"}],
+["Peony","Paeonia spp.","#e64980","A big, ruffled, fragrant flower on a long-lived perennial.","Is a major cut flower and a symbol of prosperity in China.",["ornamental","scent","symbol"],{EE:"g",DE:"g",GB:"g",IT:"w",ES:"w",US:"g",JP:"g"}],
+["Common poppy","Papaver rhoeas","#e03131","A scarlet field flower that appears wherever soil is disturbed.","Is a remembrance symbol in many countries, its seeds are used in baking and its petals tint syrups.",["food","symbol","pollinator"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"w",US:"w",JP:"g"}],
+["Iris","Iris spp.","#4c6ef5","A sword-leaved flower with three upright and three drooping petals.","Its rhizomes (orris root) give a violet-scented base for perfume; the flower is named for the Greek goddess of the rainbow.",["scent","ornamental","symbol"],{EE:"g",DE:"w",GB:"w",IT:"w",ES:"w",US:"w",JP:"w"}],
+["Daffodil","Narcissus pseudonarcissus","#ffd43b","A trumpet-shaped yellow spring bulb flower.","Is a national emblem of Wales, a cancer-charity symbol, and its bulbs are poisonous so rodents leave them alone.",["ornamental","symbol","poison"],{GB:"w",ES:"w",IT:"w",DE:"g",EE:"g",US:"g",JP:"g"}],
+["Snowdrop","Galanthus nivalis","#f1f3f5","A tiny white bulb flower that pushes up through snow in late winter.","Is among the first flowers of the year, a collector's favourite, and the source of a drug used for Alzheimer's.",["ornamental"],{DE:"w",IT:"w",GB:"g",EE:"g",US:"g"}],
+["Foxglove","Digitalis purpurea","#ae3ec9","A tall spike of tubular purple flowers visited by bumblebees.","Is the source of the heart drug digoxin, but every part is dangerously poisonous.",["pollinator","poison"],{GB:"w",DE:"w",ES:"w",IT:"w",EE:"g",US:"g"}],
+["Forget-me-not","Myosotis spp.","#74c0fc","A tiny sky-blue flower with a yellow eye.","Is a symbol of remembrance and loyalty and a spring garden classic.",["ornamental","symbol"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"w",US:"w",JP:"g"}],
+["Sweet violet","Viola odorata and relatives","#7048e8","A small purple flower with a heart-shaped leaf, found in woods and hedges.","Is edible and candied, used in perfume and a traditional cough herb.",["scent","food","ornamental"],{EE:"w",DE:"w",GB:"w",IT:"w",ES:"w",US:"w",JP:"w"}],
+["Sweet pea","Lathyrus odoratus","#da77f2","A climbing annual with ruffled, richly scented flowers, originally from Sicily.","Is grown for its fragrance and cut flowers; the seeds are poisonous.",["scent","ornamental","poison"],{IT:"w",EE:"g",DE:"g",GB:"g",ES:"g",US:"g"}],
+["Hydrangea","Hydrangea macrophylla","#4dabf7","A shrub with large mop-heads of flowers whose colour depends on soil acidity.","Is a favourite garden shrub and cut flower; acidic soil turns blue, alkaline soil pink.",["ornamental"],{JP:"w",DE:"g",GB:"g",ES:"g",IT:"g",US:"g",EE:"g"}],
+["Dahlia","Dahlia spp.","#ff922b","A Mexican tuberous flower in almost every shape and colour except true blue.","Is the national flower of Mexico, the tubers are edible, and it is hugely popular as a late-summer cut flower.",["ornamental","food","symbol"],{EE:"g",DE:"g",GB:"g",IT:"g",ES:"g",US:"g",JP:"g"}],
+["Marigold","Tagetes spp.","#f08c00","Orange and yellow flowers native to the Americas, with a strong smell.","Is central to Day of the Dead altars in Mexico, used as a dye and planted to deter pests.",["ornamental","symbol"],{EE:"g",DE:"g",GB:"g",IT:"g",ES:"g",US:"g",JP:"g"}],
+["Pot marigold","Calendula officinalis","#ff8f00","A cheerful orange daisy from the Mediterranean, easy to grow.","Its petals are edible, used as a cheap saffron substitute, and the flowers are used in skin creams.",["food","tea","pollinator"],{ES:"w",IT:"w",EE:"g",DE:"g",GB:"g",US:"g"}],
+["Jasmine","Jasminum officinale","#f8f9fa","A climbing plant with intensely fragrant white flowers.","Flavours tea, is a key perfume ingredient and a symbol of love in many cultures.",["scent","tea","symbol"],{IT:"g",ES:"g",US:"g",JP:"g"}],
+["Hibiscus","Hibiscus rosa-sinensis","#fa5252","A large, showy tropical flower in red, pink, orange or yellow.","Its relatives make tart hibiscus tea, and the flower is Hawaii's state flower.",["tea","ornamental","symbol"],{US:"g",JP:"g",ES:"g",IT:"g"}],
+["Chrysanthemum","Chrysanthemum spp.","#fcc419","A dense, many-petalled autumn flower grown for over 3,000 years in East Asia.","Is the imperial emblem of Japan, used in tea and as an autumn memorial flower in much of Europe.",["tea","ornamental","symbol"],{JP:"g",DE:"g",GB:"g",IT:"g",ES:"g",US:"g",EE:"g"}],
+["Magnolia","Magnolia spp.","#f3d9fa","One of the most ancient flowering plants, with large waxy blooms.","Is a garden tree, and its bark is used in traditional Chinese medicine.",["ornamental","scent"],{US:"w",JP:"w",IT:"g",ES:"g",DE:"g",GB:"g",EE:"g"}],
+["King protea","Protea cynaroides","#f06292","South Africa's national flower, a huge flower head with pink bracts.","Is a dramatic cut flower and is adapted to survive wildfires.",["ornamental","symbol"],{US:"g",ES:"g"}],
+["Bird of paradise","Strelitzia reginae","#ff7f27","An orange-and-blue flower shaped like a tropical bird's head.","Is pollinated by sunbirds in South Africa and is a popular cut flower and houseplant.",["ornamental"],{US:"g",ES:"g",IT:"g"}],
+["Edelweiss","Leontopodium nivale","#f1f3f5","A small, woolly white alpine flower of high rocky ground.","Is a symbol of the Alps and mountaineering, and is protected in many countries.",["symbol"],{DE:"w",IT:"w",ES:"w"}],
+["Gerbera","Gerbera jamesonii","#ff6b6b","A large, bright daisy from South Africa.","Is one of the world's most-sold cut flowers.",["ornamental"],{EE:"g",DE:"g",GB:"g",IT:"g",ES:"g",US:"g",JP:"g"}],
+["Saffron crocus","Crocus sativus","#9c36b5","A purple autumn crocus whose red stigmas are harvested by hand.","Produces saffron, the world's most expensive spice, which takes about 150 flowers per gram.",["food"],{ES:"g",IT:"g"}],
+["Camellia","Camellia japonica","#e8590c","An evergreen shrub with rose-like winter or spring flowers.","Its close relative, Camellia sinensis, provides all true tea.",["ornamental","tea"],{JP:"w",ES:"g",IT:"g",GB:"g",US:"g"}],
+["Azalea and rhododendron","Rhododendron spp.","#e599f7","Flowering shrubs covered in showy trumpet-shaped blooms in spring.","Are widely grown in gardens; many are poisonous, including their nectar and honey.",["ornamental","poison"],{JP:"w",US:"w",DE:"g",GB:"g",EE:"g"}],
+["Purple coneflower","Echinacea purpurea","#d6336c","A daisy-like prairie flower with a spiky orange cone.","Feeds bees and butterflies and is a popular herbal immune supplement.",["pollinator","tea"],{US:"w",DE:"g",GB:"g",EE:"g"}],
+["Texas bluebonnet","Lupinus texensis","#364fc7","A blue lupine that covers roadsides in spring.","Is the state flower of Texas and fixes nitrogen in the soil.",["symbol","pollinator"],{US:"w"}],
+["Cosmos","Cosmos bipinnatus","#f783ac","A tall annual with delicate pink, white or magenta daisy-like flowers.","Is easy to grow, feeds pollinators and was first brought from Mexico to Spain.",["pollinator","ornamental"],{EE:"g",DE:"g",GB:"g",IT:"g",ES:"g",US:"g",JP:"g"}],
+["Rafflesia","Rafflesia arnoldii","#c92a2a","A parasitic plant from Southeast Asian rainforests with the largest single flower in the world, up to about 1 m across.","Has no leaves, stems or roots, smells of rotting meat to attract flies, and is endangered.",["pollinator"],{}],
+["Corpse flower","Amorphophallus titanum","#862e9c","A giant plant from Sumatra whose flower-like cluster can reach over 3 m tall.","Blooms rarely for a day or two and smells like rotting flesh to attract carrion beetles.",["pollinator"],{US:"g",DE:"g",GB:"g"}]
+];
+
+const TAGS={all:"All",pollinator:"Bees & butterflies",tea:"Tea & herbs",food:"Food",scent:"Perfume & scent",ornamental:"Garden & cut flowers",symbol:"Symbols",poison:"Poisonous"};
+const $=s=>document.querySelector(s);
+const sel=$("#country");
+sel.innerHTML=Object.entries(COUNTRIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")+`<option value="ALL">Worldwide (no filter)</option>`;
+let guess="EE";
+try{guess=TZ[Intl.DateTimeFormat().resolvedOptions().timeZone]||"EE"}catch(e){}
+sel.value=guess;
+let tag="all", nearOnly=false;
+const chips=$("#chips");
+function drawChips(){
+  chips.innerHTML=`<button class="chip" data-near aria-pressed="${nearOnly}">Near me only</button>`+
+  Object.entries(TAGS).map(([k,v])=>`<button class="chip" data-tag="${k}" aria-pressed="${tag===k}">${v}</button>`).join("");
+}
+chips.addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.hasAttribute("data-near"))nearOnly=!nearOnly;else tag=b.dataset.tag;
+  drawChips();render();
+});
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function render(){
+  const c=sel.value, q=$("#q").value.trim().toLowerCase();
+  let items=F.filter(f=>{
+    const hay=(f[0]+" "+f[1]+" "+f[3]+" "+f[4]).toLowerCase();
+    if(q&&!hay.includes(q))return false;
+    if(tag!=="all"&&!f[5].includes(tag))return false;
+    if(nearOnly&&c!=="ALL"&&!f[6][c])return false;
+    return true;
+  });
+  if(c!=="ALL")items.sort((a,b)=>(b[6][c]==="w")-(a[6][c]==="w")||(!!b[6][c])-(!!a[6][c]));
+  const nearCount=c==="ALL"?0:F.filter(f=>f[6][c]).length;
+  $("#banner").textContent=c==="ALL"?`${items.length} flowers shown`:`${items.length} flowers shown. ${nearCount} of the ${F.length} in this guide grow wild or are commonly seen in ${COUNTRIES[c]}.`;
+  $("#list").innerHTML=items.length?items.map(f=>{
+    const st=f[6][c];
+    const badges=(st?`<span class="badge here">${st==="w"?"Grows wild near you":"Commonly grown near you"}</span>`:"")+
+      f[5].map(t=>`<span class="badge ${t==="poison"?"warn":""}">${TAGS[t]}</span>`).join("");
+    return `<article class="card" style="--c:${f[2]}"><h2>${esc(f[0])}</h2><div class="sci">${esc(f[1])}</div>
+    <p><span class="lbl">What it is</span><br>${esc(f[3])}</p>
+    <p><span class="lbl">What it does</span><br>${esc(f[4])}</p>${badges}</article>`;
+  }).join(""):`<div class="empty">No flowers match. Try a different search or filter.</div>`;
+}
+$("#q").addEventListener("input",render);
+sel.addEventListener("change",render);
+drawChips();render();
+</script>
+</body>
+</html>
